@@ -36,7 +36,9 @@ export default function Checkout({ cart, emptyCart }) {
   }
 
   function handleBlur(event) {
-    // TODO
+    setTouched((cur) => {
+      return {...cur, [event.target.id]: true }
+    })
   }
 
   async function handleSubmit(event) {
@@ -89,6 +91,9 @@ export default function Checkout({ cart, emptyCart }) {
             onBlur={handleBlur}
             onChange={handleChange}
           />
+          <p role="alert">
+            {(touched.city || status  === STATUS.SUBMITTED) && errors.city}
+          </p>
         </div>
 
         <div>
