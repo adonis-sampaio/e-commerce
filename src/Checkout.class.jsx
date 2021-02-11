@@ -1,7 +1,6 @@
-import React, { useState } from "react";
+import React from "react";
 
 import {saveShippingAddress} from './services/shippingService';
-import { useCart } from './cartContext';
 
 const STATUS = {
   IDLE: "IDLE",
@@ -16,64 +15,80 @@ const emptyAddress = {
   country: "",
 };
 
-export default function Checkout() {
-  const { cart, dispatch } = useCart();
-  const [address, setAddress] = useState(emptyAddress);
-  const [status, setStatus] = useState(STATUS.IDLE);
-  const [saveError, setSaveError] = useState(null);
-  const [touched, setTouched] = useState({});
+export default class Checkout extends React.Component {
+    state = {
+      address: emptyAddress,
+      status: STATUS.IDLE,
+      saveError: null,
+      touched: {}
+    }
 
   //Derived State
-  const errors = getErrors(address);
-  const isValid = Object.keys(errors).length === 0;
+  isValid() {
+    const errors = this.getErrors(this.state.address);
+    return Object.keys(errors).length === 0;
+ }
 
-  function handleChange(e) {
+  handleChange = (e) => {
     e.persist();
-    setAddress((currAddress) => {
+    this.setState((state) => {
       return {
-        ...currAddress,  
-        [e.target.id]: e.target.value
+        address: {
+          ...state.address,
+          [e.target.id]: e.target.value
+        }
       }
     })
   }
 
-  function handleBlur(event) {
+  handleBlur = (event) => {
     event.persist();
-    setTouched((cur) => {
-      return {...cur, [event.target.id]: true }
+    this.setState((state) => {
+      return {
+        touched: {
+          ...state.touched, 
+          [event.target.id]: true
+        }
+      }
     })
   }
 
-  async function handleSubmit(event) {
+  handleSubmit = async (event) => {
     event.preventDefault();
-    setStatus(STATUS.SUBMITTING);
-    if (isValid) {
+    this.setState({ status: STATUS.SUBMITTING});
+    if (this.isValid()) {
       try {
-        await saveShippingAddress(address);
-        dispatch({ type: "empty"});
-        setStatus(STATUS.COMPLETED);
+        await saveShippingAddress(this.state.address);
+        this.props.dispatch({ type: "empty"});
+        this.setState({ status: STATUS.COMPLETED});
       } catch (e) {
-        setSaveError(e);
+        this.setState({ saveError: e });
       }
     } else {
-      setStatus(STATUS.SUBMITTED);
+      this.setState({ status: STATUS.SUBMITTED});
     } 
   }
 
-  function getErrors(address) {
+  getErrors(address) {
     const result = {}
     if (!address.city) result.city = "City is Required";
     if (!address.country) result.country = "Country is required";
     return result;
   }
+  render(){
 
+  const { status, saveError, touched, address } = this.state;
+  
+  //Derived State
+  const errors = this.getErrors(this.state.address);
+  
   if (saveError) throw saveError();
   if (status === STATUS.COMPLETED) return <h1>Thanks for Shopping</h1>
 
   return (
     <>
       <h1>Shipping Info</h1>
-      { !isValid && status === STATUS.SUBMITTED && (
+      { !this.isValid() && status === STATUS.SUBMITTED && (
         <div role="alert">
           <p>Please fix the following errors: </p>
           <ul>
@@ -83,7 +98,7 @@ export default function Checkout() {
           </ul>
         </div>
       )}
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={this.handleSubmit}>
         <div>
           <label htmlFor="city">City</label>
           <br />
@@ -91,8 +106,8 @@ export default function Checkout() {
             id="city"
             type="text"
             value={address.city}
-            onBlur={handleBlur}
-            onChange={handleChange}
+            onBlur={this.handleBlur}
+            onChange={this.handleChange}
           />
           <p role="alert">
             {(touched.city || status  === STATUS.SUBMITTED) && errors.city}
@@ -105,8 +120,8 @@ export default function Checkout() {
           <select
             id="country"
             value={address.country}
-            onBlur={handleBlur}
-            onChange={handleChange}
+            onBlur={this.handleBlur}
+            onChange={this.handleChange}
           >
             <option value="">Select Country</option>
             <option value="China">China</option>
@@ -130,4 +145,5 @@ export default function Checkout() {
       </form>
     </>
   );
+}
 }
